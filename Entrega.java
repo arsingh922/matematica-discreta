@@ -836,7 +836,7 @@ class Entrega {
         }
         if (p == 0) throw new IllegalArgumentException("n no és compost");
 
-        //Calculem φ(n) = (p-1)*(q-1) i després l'invers modular d de e
+        //Calculem phi(n)
         int phi = (p - 1) * (q - 1);
         int d   = modInverse(e, phi);
 
@@ -872,7 +872,7 @@ class Entrega {
         int g = r[0], x = r[2], y = r[1] - (a / b) * r[2];
         return new int[]{g, x, y};
     }
-    //Calcula l'invers modular de 'a' mòdul 'm' (suposa gcd(a,m)=1)
+    //Calcula l'invers modular de 'a' mòdul 'm'
     private static int modInverse(int a, int m) {
         int[] r = extendedGcd(a, m);
         if (r[0] != 1) throw new ArithmeticException("No existeix invers modular");
