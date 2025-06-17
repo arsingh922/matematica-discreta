@@ -316,7 +316,26 @@ class Entrega {
      * Determinau si el graf `g` (no dirigit) té cicles.
      */
     static boolean exercici1(int[][] g) {
-      throw new UnsupportedOperationException("pendent");
+        boolean[] visitat = new boolean[g.length];
+        for (int u = 0; u < g.length; u++) {
+            if (!visitat[u]) {
+                if (cercaCicle(u, -1, visitat, g)) return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean cercaCicle(int u, int pare, boolean[] visitat, int[][] g) {
+        visitat[u] = true;
+        for (int v : g[u]) {
+            if (!visitat[v]) {
+                if (cercaCicle(v, u, visitat, g)) return true;
+            } else if (v != pare) {
+                // hem trobat un veí visitat que no és el pare → cicle
+                return true;
+            }
+        }
+        return false;
     }
 
     /*
@@ -324,7 +343,54 @@ class Entrega {
      * 10.
      */
     static boolean exercici2(int[][] g1, int[][] g2) {
-      throw new UnsupportedOperationException("pendent");
+        int n = g1.length;
+        if (n != g2.length) return false;
+        // 1) calcular graus de cada vèrtex
+        int[] grau1 = new int[n], grau2 = new int[n];
+        for (int i = 0; i < n; i++) {
+            grau1[i] = g1[i].length;
+            grau2[i] = g2[i].length;
+        }
+        // 2) crear ordre per graus creixents (poda)
+        Integer[] ordre = new Integer[n];
+        for (int i = 0; i < n; i++) ordre[i] = i;
+        Arrays.sort(ordre, (u, v) -> Integer.compare(grau1[u], grau1[v]));
+        // 3) recerca per permutacions vàlides
+        boolean[] usat = new boolean[n];
+        int[] permutacio = new int[n];
+        return recercaPermutacions(0, n, ordre, grau1, grau2, permutacio, usat, g1, g2);
+    }
+
+    private static boolean recercaPermutacions(int idx, int n, Integer[] ordre,
+                                               int[] grau1, int[] grau2,
+                                               int[] permutacio, boolean[] usat,
+                                               int[][] g1, int[][] g2) {
+        if (idx == n) {
+            // comprovar que cada aresta de g1 existeix en g2 permutada
+            for (int u = 0; u < n; u++) {
+                int uu = permutacio[u];
+                for (int v : g1[u]) {
+                    int vv = permutacio[v];
+                    boolean trobat = false;
+                    for (int x : g2[uu]) {
+                        if (x == vv) { trobat = true; break; }
+                    }
+                    if (!trobat) return false;
+                }
+            }
+            return true;
+        }
+        int u = ordre[idx];
+        for (int v = 0; v < n; v++) {
+            if (!usat[v] && grau1[u] == grau2[v]) {
+                usat[v] = true;
+                permutacio[u] = v;
+                if (recercaPermutacions(idx + 1, n, ordre, grau1, grau2, permutacio, usat, g1, g2))
+                    return true;
+                usat[v] = false;
+            }
+        }
+        return false;
     }
 
     /*
@@ -335,8 +401,63 @@ class Entrega {
      * vèrtex.
      */
     static int[] exercici3(int[][] g, int r) {
-      throw new UnsupportedOperationException("pendent");
+        int n = g.length;
+        // 1) comprovar n-1 arestes
+        int edgeCount = 0;
+        for (int u = 0; u < n; u++) {
+            edgeCount += g[u].length;
+        }
+        edgeCount /= 2;
+        if (edgeCount != n - 1) return null;
+
+        // 2) comprovar connexitat i absència de cicles
+        boolean[] visited = new boolean[n];
+        if (detectaCicleIComponentsDesconexes(r, -1, g, visited)) return null;
+        for (boolean vis : visited) {
+            if (!vis) return null;
+        }
+
+        // 3) recórrer en postordre
+        List<Integer> ordre = new ArrayList<>();
+        recorregutPostordre(r, -1, g, ordre);
+
+        // convertir List<Integer> a int[]
+        int[] resultat = new int[ordre.size()];
+        for (int i = 0; i < ordre.size(); i++) {
+            resultat[i] = ordre.get(i);
+        }
+        return resultat;
     }
+
+    private static boolean detectaCicleIComponentsDesconexes(int u, int parent, int[][] g, boolean[] visited) {
+        visited[u] = true;
+        for (int v : g[u]) {
+            if (!visited[v]) {
+                if (detectaCicleIComponentsDesconexes(v, u, g, visited)) return true;
+            } else if (v != parent) {
+                // hem detectat un cicle
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void recorregutPostordre(int u, int parent, int[][] g, List<Integer> ordre) {
+        for (int v : g[u]) {
+            if (v == parent) continue;
+            recorregutPostordre(v, u, g, ordre);
+        }
+        ordre.add(u);
+    }
+
+      // Omple 'order' amb el recorregut en postordre del subarbre que té arrel a `u`
+    private static void postOrder(int u, int parent, int[][] g, List<Integer> order) {
+        for (int v : g[u]) {
+          if (v == parent) continue;
+          postOrder(v, u, g, order);
+        }
+        order.add(u);
+      }
 
     /*
      * Suposau que l'entrada és un mapa com el següent, donat com String per files (vegeu els tests)
@@ -363,7 +484,41 @@ class Entrega {
      * Si és impossible, retornau -1.
      */
     static int exercici4(char[][] mapa) {
-      throw new UnsupportedOperationException("pendent");
+        int n = mapa.length;
+        int m = mapa[0].length;
+        // 1) Troba l'origen 'O'
+        int sr = -1, sc = -1;
+        for (int i = 0; i < n; i++) {
+          for (int j = 0; j < m; j++) {
+            if (mapa[i][j] == 'O') {
+              sr = i; sc = j;
+              break;
+            }
+          }
+          if (sr != -1) break;
+        }
+        // 2) BFS
+        boolean[][] vis = new boolean[n][m];
+        java.util.Queue<int[]> q = new java.util.LinkedList<>();
+        q.add(new int[]{sr, sc, 0});
+        vis[sr][sc] = true;
+        int[][] dirs = {{1,0},{-1,0},{0,1},{0,-1}};
+        while (!q.isEmpty()) {
+          int[] cur = q.poll();
+          int r = cur[0], c = cur[1], d = cur[2];
+          // si som a la destinació
+          if (mapa[r][c] == 'D') return d;
+          // explora veïns
+          for (int[] dir : dirs) {
+            int nr = r + dir[0], nc = c + dir[1];
+            if (nr < 0 || nr >= n || nc < 0 || nc >= m) continue;
+            if (vis[nr][nc] || mapa[nr][nc] == '#') continue;
+            vis[nr][nc] = true;
+            q.add(new int[]{nr, nc, d + 1});
+          }
+        }
+        // no s'ha arribat a 'D'
+        return -1;
     }
 
     /*
