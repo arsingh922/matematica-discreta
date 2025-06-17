@@ -79,7 +79,39 @@ class Entrega {
     static final char NAND = '.';
 
     static int exercici1(char[] ops, int[] vars) {
-      throw new UnsupportedOperationException("pendent");
+       //Calcular quantes variables hi ha
+    int maxVar = -1;
+    for (int v : vars) {
+        if (v > maxVar) {
+            maxVar = v;
+        }
+    }
+    int totalVars = maxVar + 1;
+    int totalAssignacions = 1 << totalVars;
+    boolean viuTrue = false;   // hem vist algun true?
+    boolean viuFalse = false;  // hem vist algun false?
+    //Recorregut de totes les assignacions de valors
+    for (int assig = 0; assig < totalAssignacions && !(viuTrue && viuFalse); assig++) {
+        // Comencem amb el valor de la primera variable
+        boolean valor = ((assig >> vars[0]) & 1) == 1;
+        // Anem aplicant cada operador seguit
+        for (int i = 0; i < ops.length; i++) {
+            boolean seguent = ((assig >> vars[i + 1]) & 1) == 1;
+            char op = ops[i];
+            if      (op == CONJ)  valor = valor && seguent;
+            else if (op == DISJ)  valor = valor || seguent;
+            else if (op == IMPL)  valor = !valor || seguent;
+            else /* NAND */       valor = !(valor && seguent);
+        }
+        // Marcar si hem obtingut true o false
+        if (valor)      viuTrue  = true;
+        else            viuFalse = true;
+    }
+    //Determinar resultat final
+    if (viuTrue && viuFalse) {
+        return -1;   // ni tot true ni tot false
+    }
+    return viuTrue ? 1 : 0;  // 1 = tautologia, 0 = contradicció
     }
 
     /*
@@ -93,9 +125,30 @@ class Entrega {
      * (∀x : P(x)) <-> (∃!x : Q(x))
      */
     static boolean exercici2(int[] universe, Predicate<Integer> p, Predicate<Integer> q) {
-      throw new UnsupportedOperationException("pendent");
+          //Comproveu si P(x) es compleix per a tots els elements
+    boolean allMatchP = true;
+    for (int x : universe) {
+        if (!p.test(x)) {
+            allMatchP = false;
+            break;
+        }
     }
-
+    //Compta quants elements satisfan Q(x)
+    int qCount = 0;
+    for (int x : universe) {
+        if (q.test(x)) {
+            qCount++;
+            if (qCount > 1) {
+                //no cal continuar un cop n'hi hagi més d'un
+                break;
+            }
+        }
+    }
+    boolean exactlyOneQ = (qCount == 1);
+    //Retorna "true" si coincideixen els dos costats de l'equivalència.
+    return allMatchP == exactlyOneQ;
+    }
+    
     static void tests() {
       // Exercici 1
       // Taules de veritat
@@ -147,7 +200,22 @@ class Entrega {
      * Pista: Cercau informació sobre els nombres de Stirling.
      */
     static int exercici1(int[] a) {
-      throw new UnsupportedOperationException("pendent");
+    int n = a.length;
+    // taula[i][k] = número de maneres de particionar i elements en k grups
+    long[][] taula = new long[n + 1][n + 1];
+    taula[0][0] = 1;
+    // omplim la taula seguint la relació:
+    for (int i = 1; i <= n; i++) {
+        for (int k = 1; k <= i; k++) {
+            taula[i][k] = k * taula[i - 1][k] + taula[i - 1][k - 1];
+        }
+    }
+    // sumem totes les particions amb tots els possibles
+    long totalPartitions = 0;
+    for (int k = 0; k <= n; k++) {
+        totalPartitions += taula[n][k];
+    }
+    return (int) totalPartitions;
     }
 
     /*
@@ -158,7 +226,42 @@ class Entrega {
      * Si no existeix, retornau -1.
      */
     static int exercici2(int[] a, int[][] rel) {
-      throw new UnsupportedOperationException("pendent");
+    int n = a.length;
+    boolean[][] R = new boolean[n][n];
+
+    // Afegir relació inicial
+    for (int[] p : rel) {
+        int u = 0, v = 0;
+        for (int i = 0; i < n; i++) {
+            if (a[i] == p[0]) u = i;
+            if (a[i] == p[1]) v = i;
+        }
+        R[u][v] = true;
+    }
+
+    // Reflexiva
+    for (int i = 0; i < n; i++) R[i][i] = true;
+
+    // Transitiva
+    for (int k = 0; k < n; k++)
+        for (int i = 0; i < n; i++)
+            if (R[i][k])
+                for (int j = 0; j < n; j++)
+                    if (R[k][j]) R[i][j] = true;
+
+    // Antisimetria
+    for (int i = 0; i < n; i++)
+        for (int j = i + 1; j < n; j++)
+            if (R[i][j] && R[j][i])
+                return -1;
+
+    // Comptar parells
+    int total = 0;
+    for (int i = 0; i < n; i++)
+        for (int j = 0; j < n; j++)
+            if (R[i][j]) total++;
+
+    return total;
     }
 
     /*
@@ -169,7 +272,83 @@ class Entrega {
      * - null en qualsevol altre cas
      */
     static Integer exercici3(int[] a, int[][] rel, int[] x, boolean op) {
-      throw new UnsupportedOperationException("pendent");
+    int n = a.length;
+    // Construir la clausura reflexiva i transitiva
+    boolean[][] clausura = new boolean[n][n];
+    // Afegim els parells originals
+    for (int[] parell : rel) {
+        int from = -1, to = -1;
+        for (int i = 0; i < n; i++) {
+            if (a[i] == parell[0]) from = i;
+            if (a[i] == parell[1])   to = i;
+        }
+        clausura[from][to] = true;
+    }
+    // Reflexiva
+    for (int i = 0; i < n; i++) {
+        clausura[i][i] = true;
+    }
+    // Transitiva
+    for (int k = 0; k < n; k++)
+        for (int i = 0; i < n; i++)
+            if (clausura[i][k])
+                for (int j = 0; j < n; j++)
+                    if (clausura[k][j])
+                        clausura[i][j] = true;
+
+    // Convertir x[] en índexs dins de a[]
+    int m = x.length;
+    int[] xIdx = new int[m];
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (x[i] == a[j]) {
+                xIdx[i] = j;
+                break;
+            }
+        }
+    }
+    // Identificar candidats
+    boolean[] esCandidat = new boolean[n];
+    int totalCandidats = 0;
+    for (int i = 0; i < n; i++) {
+        boolean ok = true;
+        for (int xi : xIdx) {
+            if (op) {
+                // suprem
+                if (!clausura[xi][i]) { ok = false; break; }
+            } else {
+                // ínfim
+                if (!clausura[i][xi]) { ok = false; break; }
+            }
+        }
+        if (ok) {
+            esCandidat[i] = true;
+            totalCandidats++;
+        }
+    }
+    if (totalCandidats == 0) return null;
+    //D’entre els candidats, triar l’únic extrem
+    Integer idxResultat = null;
+    for (int i = 0; i < n; i++) {
+        if (!esCandidat[i]) continue;
+        boolean esExtrem = true;
+        for (int j = 0; j < n; j++) {
+            if (i != j && esCandidat[j]) {
+                if (op ? clausura[j][i] : clausura[i][j]) {
+                    esExtrem = false;
+                    break;
+                }
+            }
+        }
+        if (esExtrem) {
+            if (idxResultat != null) {
+                return null;
+            }
+            idxResultat = i;
+        }
+    }
+    //Retornar el valor original
+    return idxResultat == null ? null : a[idxResultat];
     }
 
     /*
@@ -180,7 +359,29 @@ class Entrega {
      *  - Sinó, null.
      */
     static int[][] exercici4(int[] a, int[] b, Function<Integer, Integer> f) {
-      throw new UnsupportedOperationException("pendent");
+    int n = a.length;
+    int m = b.length;
+    //Calculem la imatge de cada element de A segons f(x)
+    int[] imatge = new int[n];
+    for (int i = 0; i < n; i++) {
+        imatge[i] = f.apply(a[i]);
+    }
+    // Preparem l’array de resultats, un parell per cada y que perteneix a B
+    int[][] inversa = new int[m][2];
+    for (int j = 0; j < m; j++) {
+        int y = b[j];
+        inversa[j][0] = y;
+        //Cerquem un x que pertany A amb f(x) = y
+        int xAssignat = a[0];
+        for (int i = 0; i < n; i++) {
+            if (imatge[i] == y) {
+                xAssignat = a[i];
+                break;
+            }
+        }
+        inversa[j][1] = xAssignat;
+    }
+    return inversa;
     }
 
     /*
@@ -324,14 +525,13 @@ class Entrega {
         }
         return false;
     }
-
     private static boolean cercaCicle(int u, int pare, boolean[] visitat, int[][] g) {
         visitat[u] = true;
         for (int v : g[u]) {
             if (!visitat[v]) {
                 if (cercaCicle(v, u, visitat, g)) return true;
             } else if (v != pare) {
-                // hem trobat un veí visitat que no és el pare → cicle
+                // hem trobat un veí visitat que no és el pare, doncs es cicle
                 return true;
             }
         }
@@ -351,7 +551,7 @@ class Entrega {
             grau1[i] = g1[i].length;
             grau2[i] = g2[i].length;
         }
-        // 2) crear ordre per graus creixents (poda)
+        // 2) crear ordre per graus creixents
         Integer[] ordre = new Integer[n];
         for (int i = 0; i < n; i++) ordre[i] = i;
         Arrays.sort(ordre, (u, v) -> Integer.compare(grau1[u], grau1[v]));
@@ -402,33 +602,28 @@ class Entrega {
      */
     static int[] exercici3(int[][] g, int r) {
         int n = g.length;
-        // 1) comprovar n-1 arestes
+        //comprovar n-1 arestes
         int edgeCount = 0;
         for (int u = 0; u < n; u++) {
             edgeCount += g[u].length;
         }
         edgeCount /= 2;
         if (edgeCount != n - 1) return null;
-
-        // 2) comprovar connexitat i absència de cicles
+        // comprovar connexitat i absència de cicles
         boolean[] visited = new boolean[n];
         if (detectaCicleIComponentsDesconexes(r, -1, g, visited)) return null;
         for (boolean vis : visited) {
             if (!vis) return null;
         }
-
-        // 3) recórrer en postordre
+        // recórrer en postordre
         List<Integer> ordre = new ArrayList<>();
         recorregutPostordre(r, -1, g, ordre);
-
-        // convertir List<Integer> a int[]
         int[] resultat = new int[ordre.size()];
         for (int i = 0; i < ordre.size(); i++) {
             resultat[i] = ordre.get(i);
         }
         return resultat;
     }
-
     private static boolean detectaCicleIComponentsDesconexes(int u, int parent, int[][] g, boolean[] visited) {
         visited[u] = true;
         for (int v : g[u]) {
@@ -441,7 +636,6 @@ class Entrega {
         }
         return false;
     }
-
     private static void recorregutPostordre(int u, int parent, int[][] g, List<Integer> ordre) {
         for (int v : g[u]) {
             if (v == parent) continue;
@@ -449,7 +643,6 @@ class Entrega {
         }
         ordre.add(u);
     }
-
       // Omple 'order' amb el recorregut en postordre del subarbre que té arrel a `u`
     private static void postOrder(int u, int parent, int[][] g, List<Integer> order) {
         for (int v : g[u]) {
@@ -486,7 +679,7 @@ class Entrega {
     static int exercici4(char[][] mapa) {
         int n = mapa.length;
         int m = mapa[0].length;
-        // 1) Troba l'origen 'O'
+        // Troba l'origen
         int sr = -1, sc = -1;
         for (int i = 0; i < n; i++) {
           for (int j = 0; j < m; j++) {
@@ -497,7 +690,7 @@ class Entrega {
           }
           if (sr != -1) break;
         }
-        // 2) BFS
+  
         boolean[][] vis = new boolean[n][m];
         java.util.Queue<int[]> q = new java.util.LinkedList<>();
         q.add(new int[]{sr, sc, 0});
@@ -517,7 +710,7 @@ class Entrega {
             q.add(new int[]{nr, nc, d + 1});
           }
         }
-        // no s'ha arribat a 'D'
+        // no s'ha arribat a D
         return -1;
     }
 
@@ -598,7 +791,20 @@ class Entrega {
      * Pista: https://en.wikipedia.org/wiki/Exponentiation_by_squaring
      */
     static int[] exercici1(String msg, int n, int e) {
-      throw new UnsupportedOperationException("pendent");
+        // Convertim el missatge a un array de bytes ASCII
+        byte[] ascii = msg.getBytes();
+        int numBlocks = ascii.length / 2;
+        int[] encrypted = new int[numBlocks];
+
+        // Cada bloc de 2 bytes es codifica com b0*128 + b1
+        for (int i = 0; i < numBlocks; i++) {
+            int high = ascii[2*i] & 0x7F;
+            int low  = ascii[2*i + 1] & 0x7F;
+            int block = high * 128 + low;
+            // Encriptació modular per exponentiation by squaring
+            encrypted[i] = modPow(block, e, n);
+        }
+        return encrypted;
     }
 
     /*
@@ -616,7 +822,59 @@ class Entrega {
      * - n és major que 2¹⁴, i n² és menor que Integer.MAX_VALUE
      */
     static String exercici2(int[] m, int n, int e) {
-      throw new UnsupportedOperationException("pendent");
+        //Factoritzem n = p * q per força bruta
+        int p = 0, q = 0;
+        for (int i = 2; i * i <= n; i++) {
+            if (n % i == 0) {
+                p = i;
+                q = n / i;
+                break;
+            }
+        }
+        if (p == 0) throw new IllegalArgumentException("n no és compost");
+
+        //Calculem φ(n) = (p-1)*(q-1) i després l'invers modular d de e
+        int phi = (p - 1) * (q - 1);
+        int d   = modInverse(e, phi);
+
+        //Desencriptar cada bloc i reconstruir l'array de bytes
+        byte[] resultBytes = new byte[m.length * 2];
+        for (int i = 0; i < m.length; i++) {
+            int decrypted = modPow(m[i], d, n);
+            resultBytes[2*i]     = (byte)(decrypted / 128);
+            resultBytes[2*i + 1] = (byte)(decrypted % 128);
+        }
+        //Convertim els bytes a String i retornem
+        return new String(resultBytes);
+    }
+    // Mètodes auxiliars
+
+    //Potència modular
+    private static int modPow(int base, int exp, int mod) {
+        int result = 1;
+        base %= mod;
+        while (exp > 0) {
+            if ((exp & 1) == 1) {
+                result = (result * base) % mod;
+            }
+            base = (base * base) % mod;
+            exp >>>= 1;
+        }
+        return result;
+    }
+    //Euclides estès: retorna [g, x, y] tal que ax+by=g=gcd(a,b)
+    private static int[] extendedGcd(int a, int b) {
+        if (b == 0) return new int[]{a, 1, 0};
+        int[] r = extendedGcd(b, a % b);
+        int g = r[0], x = r[2], y = r[1] - (a / b) * r[2];
+        return new int[]{g, x, y};
+    }
+    //Calcula l'invers modular de 'a' mòdul 'm' (suposa gcd(a,m)=1)
+    private static int modInverse(int a, int m) {
+        int[] r = extendedGcd(a, m);
+        if (r[0] != 1) throw new ArithmeticException("No existeix invers modular");
+        int inv = r[1] % m;
+        return inv < 0 ? inv + m : inv;
     }
 
     static void tests() {
